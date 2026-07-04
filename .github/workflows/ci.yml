@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  lint-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tappy_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, curl, zip, gd, bcmath, intl, pdo, pdo_pgsql, pgsql, openssl
+          coverage: pcov
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Copy environment file
+        run: cp .env.example .env
+
+      - name: Generate app key
+        run: php artisan key:generate --force
+
+      - name: Configure test database
+        run: |
+          sed -i 's|DB_CONNECTION=.*|DB_CONNECTION=pgsql|' .env
+          sed -i 's|DB_HOST=.*|DB_HOST=127.0.0.1|' .env
+          sed -i 's|DB_PORT=.*|DB_PORT=5432|' .env
+          sed -i 's|DB_DATABASE=.*|DB_DATABASE=tappy_test|' .env
+          sed -i 's|DB_USERNAME=.*|DB_USERNAME=postgres|' .env
+          sed -i 's|DB_PASSWORD=.*|DB_PASSWORD=postgres|' .env
+          sed -i 's|DB_SSLMODE=.*|DB_SSLMODE=prefer|' .env
+
+      - name: Run database migrations
+        run: php artisan migrate --force
+
+      - name: Run database seeders
+        run: php artisan db:seed --force
+
+      - name: Generate Wayfinder types
+        run: php artisan wayfinder:generate --with-form
+
+      - name: Run PHP linter (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Run TypeScript type check
+        run: npm run types:check
+
+      - name: Run ESLint
+        run: npm run lint:check
+
+      - name: Run tests
+        run: php artisan test --coverage
+        env:
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: tappy_test
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
+
+  security-check:
+    name: Security Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, curl
+          coverage: none
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Check Composer vulnerabilities
+        run: composer audit
+        continue-on-error: true
+
+      - name: Check npm vulnerabilities
+        run: npm audit --production
+        continue-on-error: true

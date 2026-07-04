@@ -1,0 +1,136 @@
+name: Build Admin App
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'app/Http/Controllers/Admin/**'
+      - 'resources/js/pages/admin/**'
+      - '.github/workflows/build-admin.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'app/Http/Controllers/Admin/**'
+      - 'resources/js/pages/admin/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "admin-build"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build Admin Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, curl, zip, gd, bcmath, intl, pdo, pdo_pgsql, pgsql, openssl
+          coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+
+      - name: Generate Wayfinder types
+        run: php artisan wayfinder:generate --with-form
+
+      - name: Build admin assets
+        run: npm run build
+        env:
+          VITE_BUILD_TARGET: admin
+
+      - name: Configure GitHub Pages
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: actions/configure-pages@v4
+
+      - name: Upload admin artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          name: admin-dist
+          path: public/build
+
+      - name: Deploy to GitHub Pages
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: admin-dist
+
+  test:
+    name: Test Admin Endpoints
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: tappy_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: mbstring, xml, curl, zip, gd, bcmath, intl, pdo, pdo_pgsql, pgsql, openssl
+          coverage: none
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Prepare test environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate --force
+          sed -i 's|DB_CONNECTION=.*|DB_CONNECTION=pgsql|' .env
+          sed -i 's|DB_HOST=.*|DB_HOST=127.0.0.1|' .env
+          sed -i 's|DB_PORT=.*|DB_PORT=5432|' .env
+          sed -i 's|DB_DATABASE=.*|DB_DATABASE=tappy_test|' .env
+          sed -i 's|DB_USERNAME=.*|DB_USERNAME=postgres|' .env
+          sed -i 's|DB_PASSWORD=.*|DB_PASSWORD=postgres|' .env
+
+      - name: Run migrations
+        run: php artisan migrate --force
+
+      - name: Run admin tests
+        run: php artisan test --filter=Admin
