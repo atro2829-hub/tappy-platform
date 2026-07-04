@@ -43,12 +43,10 @@ jobs:
           KEY_PASSWORD: ${{ secrets.ANDROID_ADMIN_KEY_PASSWORD }}
         run: |
           echo "$KEYSTORE_BASE64" | base64 -d > tappy-admin.jks
-          cat > keystore.properties << KSPROPS
-          storeFile=tappy-admin.jks
-          storePassword=$KEYSTORE_PASSWORD
-          keyAlias=$KEY_ALIAS
-          keyPassword=$KEY_PASSWORD
-          KSPROPS
+          printf 'storeFile=tappy-admin.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+          echo "Keystore created:"
+          ls -la tappy-admin.jks keystore.properties
 
       - name: Grant execute permission for gradlew
         working-directory: android-admin
