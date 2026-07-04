@@ -10,6 +10,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\DashboardData;
 use App\Services\ResellerEarnings;
+use App\Support\Currency;
 use App\Support\Money;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -33,7 +34,7 @@ class DashboardController extends Controller
         $props = [
             'wallet' => [
                 'balance' => $user->wallet ? Money::toDecimal($user->wallet->balance_minor) : 0.0,
-                'currency' => $user->wallet?->currency ?? \App\Support\Currency::base(),
+                'currency' => $user->wallet?->currency ?? Currency::base(),
             ],
             'recent' => TransactionResource::collection($recent),
             'savedRecipients' => RecipientResource::collection(

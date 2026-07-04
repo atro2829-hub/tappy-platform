@@ -8,6 +8,7 @@ use App\Exceptions\InsufficientFundsException;
 use App\Models\LedgerEntry;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Support\Currency;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -23,9 +24,9 @@ class WalletService
     /**
      * Get (or lazily create) the wallet for a user in the given currency.
      */
-    public function forUser(User $user, string $currency = null): Wallet
+    public function forUser(User $user, ?string $currency = null): Wallet
     {
-        $currency = $currency ?? \App\Support\Currency::base();
+        $currency = $currency ?? Currency::base();
 
         return Wallet::firstOrCreate(
             ['user_id' => $user->id, 'currency' => $currency],

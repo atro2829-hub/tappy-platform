@@ -68,6 +68,7 @@ final class Currency
         if ($env) {
             return array_map('trim', explode(',', $env));
         }
+
         return self::SUPPORTED;
     }
 
@@ -87,6 +88,7 @@ final class Currency
         if ($currency === self::base()) {
             return 1.0;
         }
+
         return self::RATES[$currency] ?? 1.0;
     }
 
@@ -123,7 +125,7 @@ final class Currency
     /**
      * Format a minor-unit amount as a human-readable string with symbol.
      */
-    public static function format(int $minor, string $currency = null, bool $withSymbol = true): string
+    public static function format(int $minor, ?string $currency = null, bool $withSymbol = true): string
     {
         $currency = $currency ?? self::base();
         $decimals = self::decimals($currency);
@@ -132,7 +134,7 @@ final class Currency
         $formatted = number_format($major, $decimals, '.', ',');
 
         if ($withSymbol) {
-            return $formatted . ' ' . self::symbol($currency);
+            return $formatted.' '.self::symbol($currency);
         }
 
         return $formatted;
@@ -141,20 +143,22 @@ final class Currency
     /**
      * Convert a major decimal amount to minor units in the given currency.
      */
-    public static function toMinor(float $amount, string $currency = null): int
+    public static function toMinor(float $amount, ?string $currency = null): int
     {
         $currency = $currency ?? self::base();
         $decimals = self::decimals($currency);
+
         return (int) round($amount * pow(10, $decimals));
     }
 
     /**
      * Convert minor units to a major decimal amount in the given currency.
      */
-    public static function toDecimal(int $minor, string $currency = null): float
+    public static function toDecimal(int $minor, ?string $currency = null): float
     {
         $currency = $currency ?? self::base();
         $decimals = self::decimals($currency);
+
         return $minor / pow(10, $decimals);
     }
 }
