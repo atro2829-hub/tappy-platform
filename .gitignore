@@ -46,3 +46,25 @@
 _ide_helper.php
 _ide_helper_models.php
 .phpstorm.meta.php
+
+# Android
+android-user/local.properties
+android-user/keystore.properties
+android-user/*.jks
+android-user/*.keystore
+android-user/.gradle/
+android-user/build/
+android-user/app/build/
+android-user/app/.cxx/
+android-admin/local.properties
+android-admin/keystore.properties
+android-admin/*.jks
+android-admin/*.keystore
+android-admin/.gradle/
+android-admin/build/
+android-admin/app/build/
+android-admin/app/.cxx/
+
+# Capacitor
+/android
+.capacitor.config.json

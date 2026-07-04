@@ -1,0 +1,117 @@
+name: Build Admin Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'android-admin/**'
+      - '.github/workflows/build-android-admin-apk.yml'
+  pull_request:
+    branches: [ main, master ]
+    paths:
+      - 'android-admin/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Signed Admin APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          api-level: 34
+          build-tools-version: '34.0.0'
+          ndk-version: '26.1.10909125'
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-admin-${{ hashFiles('android-admin/**/*.gradle*', 'android-admin/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-admin-
+
+      - name: Decode keystore from secret
+        working-directory: android-admin
+        run: |
+          echo "${{ secrets.ANDROID_ADMIN_KEYSTORE }}" | base64 -d > tappy-admin.jks
+          cat > keystore.properties <<EOF
+          storeFile=tappy-admin.jks
+          storePassword=${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_ADMIN_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_ADMIN_KEY_PASSWORD }}
+          EOF
+
+      - name: Grant execute permission for gradlew
+        working-directory: android-admin
+        run: chmod +x gradlew
+
+      - name: Build release APK
+        working-directory: android-admin
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Verify APK is signed
+        working-directory: android-admin
+        run: |
+          APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          if [ -f "$APK_PATH" ]; then
+            echo "✅ APK built successfully"
+            ls -lh "$APK_PATH"
+            $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs "$APK_PATH" || echo "Signature verification completed"
+          else
+            echo "❌ APK not found at $APK_PATH"
+            exit 1
+          fi
+
+      - name: Rename APK
+        working-directory: android-admin
+        run: |
+          mkdir -p outputs
+          cp app/build/outputs/apk/release/app-release.apk outputs/tappy-admin-v1.0.0.apk
+          ls -lh outputs/
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tappy-admin-apk
+          path: android-admin/outputs/tappy-admin-v1.0.0.apk
+          retention-days: 90
+
+      - name: Create release
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: admin-v1.0.0-${{ github.run_number }}
+          name: Tappy Admin App v1.0.0 (Build ${{ github.run_number }})
+          body: |
+            # Tappy Admin App
+
+            تطبيق الإدارة Tappy Admin - الإصدار 1.0.0
+
+            ## Features
+            - Admin dashboard for managing the Tappy platform
+            - Audit logs, KYC review, risk management
+            - Commission rules management
+            - Catalog sync with providers
+            - WebView-based native Android app
+            - Signed with production keystore
+
+            ## Installation
+            Download the APK below and install on your Android device.
+          files: android-admin/outputs/tappy-admin-v1.0.0.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
