@@ -27,24 +27,18 @@ jobs:
       - name: Sync
         working-directory: android-user
         run: npx cap sync android
-      - name: Keystore
-        working-directory: android-user/android
-        run: |
-          echo "${{ secrets.ANDROID_USER_KEYSTORE }}" | base64 -d > tappy-user.jks
-          printf 'storeFile=tappy-user.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-            "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            "${{ secrets.ANDROID_USER_KEY_ALIAS }}" \
-            "${{ secrets.ANDROID_USER_KEY_PASSWORD }}" > keystore.properties
+      - name: Test secret
+        run: echo "Secret length is ${{ length(secrets.ANDROID_USER_KEYSTORE) }}"
       - name: Build APK
         working-directory: android-user/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleDebug --no-daemon
           mkdir -p ../outputs
-          cp app/build/outputs/apk/release/app-release.apk ../outputs/tappy-user-v1.0.0.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../outputs/tappy-user-debug.apk
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: tappy-user-apk
-          path: android-user/outputs/tappy-user-v1.0.0.apk
+          path: android-user/outputs/tappy-user-debug.apk
           retention-days: 90

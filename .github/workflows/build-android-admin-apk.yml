@@ -27,24 +27,16 @@ jobs:
       - name: Sync
         working-directory: android-admin
         run: npx cap sync android
-      - name: Keystore
-        working-directory: android-admin/android
-        run: |
-          echo "${{ secrets.ANDROID_ADMIN_KEYSTORE }}" | base64 -d > tappy-admin.jks
-          printf 'storeFile=tappy-admin.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-            "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            "${{ secrets.ANDROID_ADMIN_KEY_ALIAS }}" \
-            "${{ secrets.ANDROID_ADMIN_KEY_PASSWORD }}" > keystore.properties
       - name: Build APK
         working-directory: android-admin/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          ./gradlew assembleDebug --no-daemon
           mkdir -p ../outputs
-          cp app/build/outputs/apk/release/app-release.apk ../outputs/tappy-admin-v1.0.0.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../outputs/tappy-admin-debug.apk
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
           name: tappy-admin-apk
-          path: android-admin/outputs/tappy-admin-v1.0.0.apk
+          path: android-admin/outputs/tappy-admin-debug.apk
           retention-days: 90
