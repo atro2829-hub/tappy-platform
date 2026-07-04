@@ -1,5 +1,9 @@
 name: Build User Android APK
 
+permissions:
+  contents: write
+  actions: write
+
 on:
   push:
     branches: [ main ]
@@ -51,25 +55,3 @@ jobs:
           name: tappy-user-apk
           path: android-user/outputs/tappy-user-v1.0.0.apk
           retention-days: 90
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: user-v1.0.0-${{ github.run_number }}
-          name: Tappy User App v1.0.0
-          body: |
-            # Tappy User App v1.0.0
-
-            تطبيق المستخدم Tappy
-
-            ## المميزات
-            - الدفع الدولي وبطاقات الهدايا
-            - محفظة متعددة العملات (YER, SAR, USD)
-            - تطبيق Android أصلي مبني بـ WebView
-            - موقّع بشهادة إنتاجية
-
-            ## التثبيت
-            حمل ملف APK وثبّته على جهاز Android
-          files: android-user/outputs/tappy-user-v1.0.0.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

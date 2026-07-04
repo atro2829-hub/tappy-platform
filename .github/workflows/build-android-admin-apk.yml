@@ -1,5 +1,9 @@
 name: Build Admin Android APK
 
+permissions:
+  contents: write
+  actions: write
+
 on:
   push:
     branches: [ main ]
@@ -51,26 +55,3 @@ jobs:
           name: tappy-admin-apk
           path: android-admin/outputs/tappy-admin-v1.0.0.apk
           retention-days: 90
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: admin-v1.0.0-${{ github.run_number }}
-          name: Tappy Admin App v1.0.0
-          body: |
-            # Tappy Admin App v1.0.0
-
-            تطبيق الإدارة Tappy Admin
-
-            ## المميزات
-            - لوحة تحكم الإدارة الكاملة
-            - سجل التدقيق، مراجعة KYC، إدارة المخاطر
-            - إدارة قواعد العمولة والمزودين
-            - تطبيق Android أصلي مبني بـ WebView
-            - موقّع بشهادة إنتاجية
-
-            ## التثبيت
-            حمل ملف APK وثبّته على جهاز Android
-          files: android-admin/outputs/tappy-admin-v1.0.0.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
