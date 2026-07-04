@@ -1,13 +1,13 @@
 name: Build Admin Android APK
 
-permissions:
-  contents: write
-  actions: write
-
 on:
   push:
     branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
 
 jobs:
   build:
@@ -59,15 +59,10 @@ jobs:
         working-directory: android-admin/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon -Pandroid.injected.build.api.level=34
+          ./gradlew assembleRelease --no-daemon
           mkdir -p ../outputs
           cp app/build/outputs/apk/release/app-release.apk ../outputs/tappy-admin-v1.0.0.apk
           ls -lh ../outputs/
-
-      - name: Verify signature
-        working-directory: android-admin
-        run: |
-          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs outputs/tappy-admin-v1.0.0.apk || true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
