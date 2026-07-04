@@ -18,41 +18,12 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - uses: android-actions/setup-android@v4
-
-      - name: Install npm dependencies
+      - name: Install deps
         working-directory: android-user
         run: npm ci
-
-      - name: Build web assets
+      - name: Build
         working-directory: android-user
         run: npm run build
-
-      - name: Sync Capacitor
+      - name: Sync
         working-directory: android-user
         run: npx cap sync android
-
-      - name: Decode keystore
-        working-directory: android-user/android
-        env:
-          KS_B64: ${{ secrets.ANDROID_USER_KEYSTORE }}
-          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KS_ALIAS: ${{ secrets.ANDROID_USER_KEY_ALIAS }}
-          KS_KEYPASS: ${{ secrets.ANDROID_USER_KEY_PASSWORD }}
-        run: |
-          echo "$KS_B64" | base64 -d > tappy-user.jks
-          printf 'storeFile=tappy-user.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KS_PASS" "$KS_ALIAS" "$KS_KEYPASS" > keystore.properties
-
-      - name: Build APK
-        working-directory: android-user/android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
-          mkdir -p ../outputs
-          cp app/build/outputs/apk/release/app-release.apk ../outputs/tappy-user-v1.0.0.apk
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: tappy-user-apk
-          path: android-user/outputs/tappy-user-v1.0.0.apk
-          retention-days: 90
