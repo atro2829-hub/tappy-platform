@@ -1,70 +1,37 @@
 name: Build User Android APK
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
     paths:
       - 'android-user/**'
       - '.github/workflows/build-android-user-apk.yml'
-  workflow_dispatch:
 
 jobs:
   build:
-    name: Build Signed User APK
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-user-${{ hashFiles('android-user/**/*.gradle*') }}
-          restore-keys: gradle-user-
-
-      - name: Decode keystore
+      - uses: android-actions/setup-android@v3
+      - name: Build
         working-directory: android-user
         env:
-          KEYSTORE_BASE64: ${{ secrets.ANDROID_USER_KEYSTORE }}
-          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.ANDROID_USER_KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_USER_KEY_PASSWORD }}
+          KS_B64: ${{ secrets.ANDROID_USER_KEYSTORE }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_USER_KEY_ALIAS }}
+          KS_KEYPASS: ${{ secrets.ANDROID_USER_KEY_PASSWORD }}
         run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > tappy-user.jks
-          printf 'storeFile=tappy-user.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-            "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
-          echo "Keystore created:"
-          ls -la tappy-user.jks keystore.properties
-
-      - name: Grant execute permission for gradlew
-        working-directory: android-user
-        run: chmod +x gradlew
-
-      - name: Build release APK
-        working-directory: android-user
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
-
-      - name: Rename APK
-        working-directory: android-user
-        run: |
-          mkdir -p outputs
-          cp app/build/outputs/apk/release/app-release.apk outputs/tappy-user-v1.0.0.apk
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+          echo "$KS_B64" | base64 -d > tappy-user.jks
+          printf 'storeFile=tappy-user.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KS_PASS" "$KS_ALIAS" "$KS_KEYPASS" > keystore.properties
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon
+          mkdir -p outputs && cp app/build/outputs/apk/release/app-release.apk outputs/tappy-user.apk
+      - uses: actions/upload-artifact@v4
         with:
           name: tappy-user-apk
-          path: android-user/outputs/tappy-user-v1.0.0.apk
-          retention-days: 90
+          path: android-user/outputs/tappy-user.apk
