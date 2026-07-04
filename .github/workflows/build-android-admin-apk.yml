@@ -2,7 +2,7 @@ name: Build Admin Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
     paths:
       - 'android-admin/**'
       - '.github/workflows/build-android-admin-apk.yml'
@@ -31,17 +31,24 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-admin-${{ hashFiles('android-admin/**/*.gradle*', 'android-admin/**/gradle-wrapper.properties') }}
+          key: gradle-admin-${{ hashFiles('android-admin/**/*.gradle*') }}
           restore-keys: gradle-admin-
 
       - name: Decode keystore
         working-directory: android-admin
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_ADMIN_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_ADMIN_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_ADMIN_KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.ANDROID_ADMIN_KEYSTORE }}" | base64 -d > tappy-admin.jks
-          printf 'storeFile=tappy-admin.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-            "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            "${{ secrets.ANDROID_ADMIN_KEY_ALIAS }}" \
-            "${{ secrets.ANDROID_ADMIN_KEY_PASSWORD }}" > keystore.properties
+          echo "$KEYSTORE_BASE64" | base64 -d > tappy-admin.jks
+          cat > keystore.properties << KSPROPS
+          storeFile=tappy-admin.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          KSPROPS
 
       - name: Grant execute permission for gradlew
         working-directory: android-admin
@@ -50,13 +57,6 @@ jobs:
       - name: Build release APK
         working-directory: android-admin
         run: ./gradlew assembleRelease --no-daemon --stacktrace
-
-      - name: Verify APK
-        working-directory: android-admin
-        run: |
-          APK_PATH="app/build/outputs/apk/release/app-release.apk"
-          ls -lh "$APK_PATH"
-          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs "$APK_PATH" || true
 
       - name: Rename APK
         working-directory: android-admin
@@ -70,19 +70,3 @@ jobs:
           name: tappy-admin-apk
           path: android-admin/outputs/tappy-admin-v1.0.0.apk
           retention-days: 90
-
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: admin-v1.0.0-${{ github.run_number }}
-          name: Tappy Admin App v1.0.0
-          body: |
-            # Tappy Admin App v1.0.0
-
-            تطبيق الإدارة Tappy Admin - WebView native Android app
-            - Admin dashboard with audit logs, KYC, risk management
-            - Commission rules and catalog management
-            - Signed release APK
-          files: android-admin/outputs/tappy-admin-v1.0.0.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

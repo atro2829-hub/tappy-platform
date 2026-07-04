@@ -2,7 +2,7 @@ name: Build User Android APK
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main ]
     paths:
       - 'android-user/**'
       - '.github/workflows/build-android-user-apk.yml'
@@ -31,17 +31,24 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-user-${{ hashFiles('android-user/**/*.gradle*', 'android-user/**/gradle-wrapper.properties') }}
+          key: gradle-user-${{ hashFiles('android-user/**/*.gradle*') }}
           restore-keys: gradle-user-
 
       - name: Decode keystore
         working-directory: android-user
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_USER_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_USER_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_USER_KEY_PASSWORD }}
         run: |
-          echo "${{ secrets.ANDROID_USER_KEYSTORE }}" | base64 -d > tappy-user.jks
-          printf 'storeFile=tappy-user.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
-            "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
-            "${{ secrets.ANDROID_USER_KEY_ALIAS }}" \
-            "${{ secrets.ANDROID_USER_KEY_PASSWORD }}" > keystore.properties
+          echo "$KEYSTORE_BASE64" | base64 -d > tappy-user.jks
+          cat > keystore.properties << KSPROPS
+          storeFile=tappy-user.jks
+          storePassword=$KEYSTORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          KSPROPS
 
       - name: Grant execute permission for gradlew
         working-directory: android-user
@@ -50,13 +57,6 @@ jobs:
       - name: Build release APK
         working-directory: android-user
         run: ./gradlew assembleRelease --no-daemon --stacktrace
-
-      - name: Verify APK
-        working-directory: android-user
-        run: |
-          APK_PATH="app/build/outputs/apk/release/app-release.apk"
-          ls -lh "$APK_PATH"
-          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs "$APK_PATH" || true
 
       - name: Rename APK
         working-directory: android-user
@@ -70,19 +70,3 @@ jobs:
           name: tappy-user-apk
           path: android-user/outputs/tappy-user-v1.0.0.apk
           retention-days: 90
-
-      - name: Create release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: user-v1.0.0-${{ github.run_number }}
-          name: Tappy User App v1.0.0
-          body: |
-            # Tappy User App v1.0.0
-
-            تطبيق المستخدم Tappy - WebView native Android app
-            - Multi-currency wallet (YER, SAR, USD)
-            - Global top-ups and gift cards
-            - Signed release APK
-          files: android-user/outputs/tappy-user-v1.0.0.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
