@@ -68,3 +68,23 @@ android-admin/app/.cxx/
 # Capacitor
 /android
 .capacitor.config.json
+
+# Capacitor build artifacts
+android-user/node_modules/
+android-user/dist/
+android-user/android/.gradle/
+android-user/android/build/
+android-user/android/app/build/
+android-user/android/local.properties
+android-user/android/keystore.properties
+android-user/android/*.jks
+android-user/android/app/src/main/assets/public/
+android-admin/node_modules/
+android-admin/dist/
+android-admin/android/.gradle/
+android-admin/android/build/
+android-admin/android/app/build/
+android-admin/android/local.properties
+android-admin/android/keystore.properties
+android-admin/android/*.jks
+android-admin/android/app/src/main/assets/public/

@@ -15,6 +15,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: 'android-user/package-lock.json'
+
       - name: Setup JDK
         uses: actions/setup-java@v4
         with:
@@ -24,8 +31,20 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Decode keystore
+      - name: Install npm dependencies
         working-directory: android-user
+        run: npm ci
+
+      - name: Build web assets
+        working-directory: android-user
+        run: npm run build
+
+      - name: Sync Capacitor
+        working-directory: android-user
+        run: npx cap sync android
+
+      - name: Decode keystore
+        working-directory: android-user/android
         env:
           KS_B64: ${{ secrets.ANDROID_USER_KEYSTORE }}
           KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -34,15 +53,16 @@ jobs:
         run: |
           echo "$KS_B64" | base64 -d > tappy-user.jks
           printf 'storeFile=tappy-user.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KS_PASS" "$KS_ALIAS" "$KS_KEYPASS" > keystore.properties
+          ls -la tappy-user.jks keystore.properties
 
       - name: Build APK
-        working-directory: android-user
+        working-directory: android-user/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
-          mkdir -p outputs
-          cp app/build/outputs/apk/release/app-release.apk outputs/tappy-user-v1.0.0.apk
-          ls -lh outputs/
+          ./gradlew assembleRelease --no-daemon -Pandroid.injected.build.api.level=34
+          mkdir -p ../outputs
+          cp app/build/outputs/apk/release/app-release.apk ../outputs/tappy-user-v1.0.0.apk
+          ls -lh ../outputs/
 
       - name: Verify signature
         working-directory: android-user
