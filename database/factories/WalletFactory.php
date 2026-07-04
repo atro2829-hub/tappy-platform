@@ -20,7 +20,7 @@ class WalletFactory extends Factory
     {
         return [
             'user_id' => User::factory(),
-            'currency' => 'USD',
+            'currency' => 'YER',
             'balance_minor' => 0,
             'status' => 'active',
         ];
