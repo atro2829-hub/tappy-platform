@@ -1,24 +1,41 @@
 name: Build Admin Android APK
 
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
     paths:
       - 'android-admin/**'
       - '.github/workflows/build-android-admin-apk.yml'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-      - uses: android-actions/setup-android@v3
-      - name: Build
+
+      - name: Setup Android SDK
+        run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
+          unzip -q /tmp/cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          export PATH=$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools
+          yes | sdkmanager --licenses > /dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+          echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
+      - name: Decode keystore
         working-directory: android-admin
         env:
           KS_B64: ${{ secrets.ANDROID_ADMIN_KEYSTORE }}
@@ -28,10 +45,17 @@ jobs:
         run: |
           echo "$KS_B64" | base64 -d > tappy-admin.jks
           printf 'storeFile=tappy-admin.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KS_PASS" "$KS_ALIAS" "$KS_KEYPASS" > keystore.properties
+
+      - name: Build APK
+        working-directory: android-admin
+        run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
-          mkdir -p outputs && cp app/build/outputs/apk/release/app-release.apk outputs/tappy-admin.apk
-      - uses: actions/upload-artifact@v4
+          mkdir -p outputs
+          cp app/build/outputs/apk/release/app-release.apk outputs/tappy-admin.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
         with:
           name: tappy-admin-apk
           path: android-admin/outputs/tappy-admin.apk
