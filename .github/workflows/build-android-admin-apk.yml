@@ -29,14 +29,12 @@ jobs:
         run: npx cap sync android
       - name: Keystore
         working-directory: android-admin/android
-        env:
-          KS_B64: ${{ secrets.ANDROID_ADMIN_KEYSTORE }}
-          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KS_ALIAS: ${{ secrets.ANDROID_ADMIN_KEY_ALIAS }}
-          KS_KEYPASS: ${{ secrets.ANDROID_ADMIN_KEY_PASSWORD }}
         run: |
-          echo "$KS_B64" | base64 -d > tappy-admin.jks
-          printf 'storeFile=tappy-admin.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KS_PASS" "$KS_ALIAS" "$KS_KEYPASS" > keystore.properties
+          echo "${{ secrets.ANDROID_ADMIN_KEYSTORE }}" | base64 -d > tappy-admin.jks
+          printf 'storeFile=tappy-admin.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' \
+            "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            "${{ secrets.ANDROID_ADMIN_KEY_ALIAS }}" \
+            "${{ secrets.ANDROID_ADMIN_KEY_PASSWORD }}" > keystore.properties
       - name: Build APK
         working-directory: android-admin/android
         run: |
