@@ -130,6 +130,12 @@ jobs:
           sed -i 's|DB_PASSWORD=.*|DB_PASSWORD=postgres|' .env
           sed -i 's|DB_SSLMODE=.*|DB_SSLMODE=prefer|' .env
 
+      - name: Generate Wayfinder types
+        run: php artisan wayfinder:generate --with-form
+
+      - name: Build frontend assets
+        run: npm run build
+
       - name: Run migrations
         run: php artisan migrate --force
 
