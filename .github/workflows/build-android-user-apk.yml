@@ -10,5 +10,66 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Testing basic workflow"
-      - run: ls -la android-user/
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Decode keystore
+        working-directory: android-user
+        env:
+          KS_B64: ${{ secrets.ANDROID_USER_KEYSTORE }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KS_ALIAS: ${{ secrets.ANDROID_USER_KEY_ALIAS }}
+          KS_KEYPASS: ${{ secrets.ANDROID_USER_KEY_PASSWORD }}
+        run: |
+          echo "$KS_B64" | base64 -d > tappy-user.jks
+          printf 'storeFile=tappy-user.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KS_PASS" "$KS_ALIAS" "$KS_KEYPASS" > keystore.properties
+
+      - name: Build APK
+        working-directory: android-user
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          mkdir -p outputs
+          cp app/build/outputs/apk/release/app-release.apk outputs/tappy-user-v1.0.0.apk
+          ls -lh outputs/
+
+      - name: Verify signature
+        working-directory: android-user
+        run: |
+          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs outputs/tappy-user-v1.0.0.apk || true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: tappy-user-apk
+          path: android-user/outputs/tappy-user-v1.0.0.apk
+          retention-days: 90
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: user-v1.0.0-${{ github.run_number }}
+          name: Tappy User App v1.0.0
+          body: |
+            # Tappy User App v1.0.0
+
+            تطبيق المستخدم Tappy
+
+            ## المميزات
+            - الدفع الدولي وبطاقات الهدايا
+            - محفظة متعددة العملات (YER, SAR, USD)
+            - تطبيق Android أصلي مبني بـ WebView
+            - موقّع بشهادة إنتاجية
+
+            ## التثبيت
+            حمل ملف APK وثبّته على جهاز Android
+          files: android-user/outputs/tappy-user-v1.0.0.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
