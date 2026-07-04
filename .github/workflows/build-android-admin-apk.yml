@@ -5,63 +5,9 @@ on:
     branches: [ main ]
   workflow_dispatch:
 
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Setup JDK
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      - name: Install npm dependencies
-        working-directory: android-admin
-        run: npm ci
-
-      - name: Build web assets
-        working-directory: android-admin
-        run: npm run build
-
-      - name: Sync Capacitor
-        working-directory: android-admin
-        run: npx cap sync android
-
-      - name: Decode keystore
-        working-directory: android-admin/android
-        env:
-          KS_B64: ${{ secrets.ANDROID_ADMIN_KEYSTORE }}
-          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KS_ALIAS: ${{ secrets.ANDROID_ADMIN_KEY_ALIAS }}
-          KS_KEYPASS: ${{ secrets.ANDROID_ADMIN_KEY_PASSWORD }}
-        run: |
-          echo "$KS_B64" | base64 -d > tappy-admin.jks
-          printf 'storeFile=tappy-admin.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KS_PASS" "$KS_ALIAS" "$KS_KEYPASS" > keystore.properties
-          ls -la tappy-admin.jks keystore.properties
-
-      - name: Build APK
-        working-directory: android-admin/android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
-          mkdir -p ../outputs
-          cp app/build/outputs/apk/release/app-release.apk ../outputs/tappy-admin-v1.0.0.apk
-          ls -lh ../outputs/
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: tappy-admin-apk
-          path: android-admin/outputs/tappy-admin-v1.0.0.apk
-          retention-days: 90
+      - run: echo "test"
