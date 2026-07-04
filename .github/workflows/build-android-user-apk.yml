@@ -27,8 +27,6 @@ jobs:
       - name: Sync
         working-directory: android-user
         run: npx cap sync android
-      - name: Test secret
-        run: echo "Secret length is ${{ length(secrets.ANDROID_USER_KEYSTORE) }}"
       - name: Build APK
         working-directory: android-user/android
         run: |
